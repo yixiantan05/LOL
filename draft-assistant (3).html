@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft // Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0a0e14;
+  --panel:#111823;
+  --panel-2:#161f2c;
+  --line:#233042;
+  --gold:#c8a45c;
+  --gold-bright:#e8c479;
+  --blue:#2f8fd6;
+  --blue-dim:#1c3a52;
+  --red:#d0524a;
+  --red-dim:#4a2323;
+  --ink:#e7edf5;
+  --ink-dim:#8797ab;
+  --ink-faint:#54627a;
+  --good:#4caf82;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #14243a55, transparent 60%),
+    radial-gradient(1200px 600px at 85% 110%, #3a141455, transparent 60%),
+    var(--void);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  min-height:100vh;
+  padding:28px 20px 60px;
+}
+::selection{background:var(--gold);color:#0a0e14;}
+.wrap{max-width:1240px;margin:0 auto;}
+
+/* header */
+header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--line);padding-bottom:16px;}
+.title{font-family:'Cinzel',serif;font-weight:700;font-size:26px;letter-spacing:.04em;color:var(--gold-bright);}
+.title span{color:var(--ink-faint);font-weight:500;}
+.subtitle{font-size:12.5px;color:var(--ink-dim);max-width:520px;line-height:1.5;}
+
+/* board */
+.board{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 16px 14px;position:relative;overflow:hidden;}
+.side.blue{border-top:3px solid var(--blue);}
+.side.red{border-top:3px solid var(--red);}
+.side-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.side-name{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.08em;text-transform:uppercase;}
+.side.blue .side-name{color:var(--blue);}
+.side.red .side-name{color:var(--red);}
+.side-toggle{font-size:11px;color:var(--ink-faint);cursor:pointer;border:1px solid var(--line);padding:4px 9px;border-radius:20px;transition:.15s;}
+.side-toggle.active{border-color:var(--gold);color:var(--gold-bright);background:#c8a45c14;}
+.row-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);margin:10px 0 6px;}
+.slots{display:flex;gap:7px;flex-wrap:wrap;}
+.slot{
+  width:52px;height:52px;border-radius:8px;border:1.5px dashed var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-faint);
+  cursor:pointer;position:relative;background:#0d131c;transition:.12s;text-align:center;overflow:hidden;
+}
+.slot.ban{width:38px;height:38px;border-radius:6px;opacity:.85;}
+.slot.pick{width:68px;height:66px;flex-direction:column;gap:3px;padding:5px 3px 4px;}
+.slot:hover{border-color:var(--gold);}
+.slot.selected{border-style:solid;border-color:var(--gold-bright);box-shadow:0 0 0 2px #c8a45c33;}
+.slot.filled{border-style:solid;border-color:var(--line);}
+.slot img{width:100%;height:100%;object-fit:cover;display:block;}
+.slot .cname{font-size:8px;line-height:1.1;padding:2px 2px 0;color:var(--ink);word-break:break-word;}
+.slot .clear{position:absolute;top:1px;right:2px;font-size:9px;color:var(--red);cursor:pointer;display:none;background:#0a0e14cc;border-radius:50%;width:13px;height:13px;line-height:13px;text-align:center;}
+.slot.filled:hover .clear{display:block;}
+.slot.ban.filled{filter:grayscale(1) brightness(.6);}
+.pos-select{
+  width:100%;font-size:8.5px;background:#0d131c;color:var(--gold);border:1px solid var(--line);
+  border-radius:4px;padding:2px 1px;font-family:'IBM Plex Mono',monospace;cursor:pointer;
+}
+.pos-select:focus{outline:none;border-color:var(--gold);}
+
+/* controls row */
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+.pill-group{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px;}
+.pill{padding:6px 13px;border-radius:16px;font-size:12px;color:var(--ink-dim);cursor:pointer;transition:.12s;}
+.pill.active{background:var(--gold);color:#100c04;font-weight:600;}
+.search{
+  flex:1;min-width:180px;background:var(--panel);border:1px solid var(--line);border-radius:20px;
+  padding:8px 14px;color:var(--ink);font-size:13px;
+}
+.search:focus{outline:none;border-color:var(--gold);}
+.hint{font-size:11px;color:var(--ink-faint);}
+
+/* main split: grid + recs */
+.main{display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
+.grid-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;}
+.champ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:520px;overflow-y:auto;padding-right:4px;}
+.champ-grid::-webkit-scrollbar{width:7px;}
+.champ-grid::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+.champ{
+  aspect-ratio:1;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;
+  font-size:9.5px;text-align:center;padding:4px 2px;color:var(--ink-dim);transition:.1s;position:relative;
+}
+.champ:hover{border-color:var(--gold);transform:translateY(-1px);color:var(--ink);}
+.champ.used{opacity:.22;pointer-events:none;filter:grayscale(1);}
+.champ .role-dot{position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--ink-faint);}
+.champ .tier{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--gold);margin-top:2px;}
+
+/* recs */
+.recs{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;position:sticky;top:20px;}
+.recs h3{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;color:var(--gold-bright);margin:0 0 4px;text-transform:uppercase;}
+.recs .sub{font-size:11px;color:var(--ink-faint);margin-bottom:12px;line-height:1.4;}
+.rec-item{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:7px;}
+.rec-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.rec-name{font-weight:600;font-size:13px;}
+.rec-score{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold-bright);}
+.rec-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.rec-tag{font-size:9.5px;padding:2px 7px;border-radius:10px;background:#c8a45c14;color:var(--gold);border:1px solid #c8a45c33;}
+.rec-tag.warn{background:#d0524a14;color:#e08379;border-color:#d0524a33;}
+.empty-state{font-size:12px;color:var(--ink-faint);text-align:center;padding:20px 8px;}
+
+/* tier editor */
+.tier-note{font-size:10.5px;color:var(--ink-faint);margin-top:12px;border-top:1px solid var(--line);padding-top:10px;line-height:1.5;}
+.tier-note b{color:var(--ink-dim);}
+
+@media (max-width:900px){
+  .board{grid-template-columns:1fr;}
+  .main{grid-template-columns:1fr;}
+  .recs{position:static;}
+}
+
+/* runes panel */
+.runes-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:18px;}
+.runes-panel h3{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.06em;color:var(--gold-bright);margin:0 0 4px;text-transform:uppercase;}
+.runes-panel .sub{font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;line-height:1.4;}
+.runes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.rune-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:11px 12px;}
+.rune-card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.rune-champ{font-weight:600;font-size:13.5px;}
+.rune-pos{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;}
+.rune-paths{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+.rune-chip{font-size:10.5px;padding:3px 9px;border-radius:12px;font-weight:500;border:1px solid transparent;}
+.rune-note{font-size:11px;color:var(--ink-dim);line-height:1.5;}
+.runes-empty{font-size:12px;color:var(--ink-faint);padding:6px 2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="title">DRAFT <span>// assistant</span></div>
+      <div class="subtitle">Track picks and bans as they happen, get a live-ranked suggestion for your next pick based on team composition, damage balance, engage/peel gaps, and matchups vs the enemy comp.</div>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="side blue">
+      <div class="side-head">
+        <div class="side-name">Blue Side</div>
+        <div class="side-toggle active" id="toggle-blue" onclick="setMySide('blue')">I'm on this side</div>
+      </div>
+      <div class="row-label">Bans</div>
+      <div class="slots" id="blue-bans"></div>
+      <div class="row-label">Picks</div>
+      <div class="slots" id="blue-picks"></div>
+    </div>
+    <div class="side red">
+      <div class="side-head">
+        <div class="side-name">Red Side</div>
+        <div class="side-toggle" id="toggle-red" onclick="setMySide('red')">I'm on this side</div>
+      </div>
+      <div class="row-label">Bans</div>
+      <div class="slots" id="red-bans"></div>
+      <div class="row-label">Picks</div>
+      <div class="slots" id="red-picks"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="pill-group" id="role-filter"></div>
+    <input class="search" id="search" placeholder="Search champion..." oninput="renderGrid()">
+    <div class="hint" id="mode-hint">Click a slot, then a champion to place it. Each pick has a position dropdown — set it to the lane they're actually playing.</div>
+  </div>
+
+  <div class="main">
+    <div class="grid-panel">
+      <div class="champ-grid" id="champ-grid"></div>
+    </div>
+    <div class="recs">
+      <h3>Best pick</h3>
+      <div class="sub" id="recs-sub">Recommendations for Blue Side's next open pick slot.</div>
+      <div id="rec-role-filter" class="pill-group" style="margin-bottom:10px;"></div>
+      <div id="rec-list"></div>
+      <div class="tier-note"><b>Note:</b> tags marked <b>[Data]</b> come from real win-rate stats for your champion pool (Seraphine/Lux/Nautilus/Nami/Thresh); the tier score and other tags are still my best static estimate, not live win-rate data.</div>
+    </div>
+  </div>
+
+  <div class="runes-panel">
+    <h3>Suggested runes <span id="runes-side-label"></span></h3>
+    <div class="sub">A default rune page per locked-in champion, adjusted against whoever's assigned to the same lane on the enemy side.</div>
+    <div id="runes-list" class="runes-grid"></div>
+    <div class="tier-note"><b>Note:</b> matchup notes tagged <b>[Data]</b> are pulled from real aggregate win-rate stats (lolalytics/mobalytics, patch 26.13–26.14) for Seraphine, Lux, Nautilus, Nami and Thresh — your actual champion pool. Everything else is still a class-based default page, not patch-exact.</div>
+  </div>
+
+</div>
+
+<script>
+/* ---------------- CHAMPION DATA ----------------
+   role: primary role(s). dmg: AD/AP/Mixed. tags: class tags.
+   eng: hard engage/initiation tool (0/1). cc: rough CC value 0-2. peel: has strong disengage/peel (0/1).
+   tier: rough baseline strength 1(weak)-5(top), EDITABLE below, treat as approximate. */
+const CHAMPS = [
+{n:"Aatrox",r:["Top"],d:"AD",t:["Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Ahri",r:["Mid"],d:"AP",t:["Mage","Assassin"],eng:0,cc:1,peel:0,tier:4},
+{n:"Akali",r:["Mid","Top"],d:"AP",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Akshan",r:["Mid","ADC"],d:"AD",t:["Marksman","Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Alistar",r:["Support"],d:"AP",t:["Tank","Support"],eng:1,cc:2,peel:1,tier:4},
+{n:"Ambessa",r:["Top","Jungle"],d:"AD",t:["Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Amumu",r:["Jungle"],d:"AP",t:["Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Anivia",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:2,peel:1,tier:3},
+{n:"Annie",r:["Mid","Support"],d:"AP",t:["Mage"],eng:1,cc:2,peel:0,tier:3},
+{n:"Aphelios",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:4},
+{n:"Ashe",r:["ADC"],d:"AD",t:["Marksman","Support"],eng:1,cc:1,peel:0,tier:5},
+{n:"Aurelion Sol",r:["Mid"],d:"AP",t:["Mage"],eng:0,cc:1,peel:0,tier:3},
+{n:"Aurora",r:["Mid","Top"],d:"AP",t:["Mage","Assassin"],eng:0,cc:1,peel:0,tier:4},
+{n:"Azir",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:1,peel:1,tier:3},
+{n:"Bard",r:["Support"],d:"AP",t:["Support","Controller"],eng:1,cc:2,peel:1,tier:3},
+{n:"Bel'Veth",r:["Jungle"],d:"AD",t:["Fighter"],eng:0,cc:0,peel:0,tier:3},
+{n:"Blitzcrank",r:["Support"],d:"AP",t:["Tank","Support"],eng:1,cc:2,peel:0,tier:4},
+{n:"Brand",r:["Support","Mid"],d:"AP",t:["Mage"],eng:0,cc:1,peel:0,tier:3},
+{n:"Braum",r:["Support"],d:"AD",t:["Tank","Support"],eng:0,cc:2,peel:1,tier:3},
+{n:"Briar",r:["Jungle"],d:"AD",t:["Fighter","Assassin"],eng:1,cc:1,peel:0,tier:4},
+{n:"Caitlyn",r:["ADC"],d:"AD",t:["Marksman","Poke"],eng:0,cc:1,peel:0,tier:5},
+{n:"Camille",r:["Top"],d:"AD",t:["Fighter","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Cassiopeia",r:["Mid"],d:"AP",t:["Mage"],eng:0,cc:1,peel:0,tier:3},
+{n:"Cho'Gath",r:["Top"],d:"AP",t:["Tank"],eng:0,cc:2,peel:0,tier:3},
+{n:"Corki",r:["Mid"],d:"AD",t:["Marksman","Poke"],eng:0,cc:0,peel:0,tier:3},
+{n:"Darius",r:["Top"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Diana",r:["Jungle","Mid"],d:"AP",t:["Assassin","Fighter"],eng:1,cc:1,peel:0,tier:4},
+{n:"Dr. Mundo",r:["Top"],d:"AP",t:["Tank","Fighter"],eng:0,cc:0,peel:0,tier:4},
+{n:"Draven",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:3},
+{n:"Ekko",r:["Jungle","Mid"],d:"AP",t:["Assassin","Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Elise",r:["Jungle"],d:"AP",t:["Mage","Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Evelynn",r:["Jungle"],d:"AP",t:["Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Ezreal",r:["ADC"],d:"AD",t:["Marksman","Poke"],eng:0,cc:0,peel:0,tier:4},
+{n:"Fiddlesticks",r:["Jungle"],d:"AP",t:["Mage","Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Fiora",r:["Top"],d:"AD",t:["Fighter","Split"],eng:0,cc:0,peel:0,tier:3},
+{n:"Fizz",r:["Mid"],d:"AP",t:["Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Galio",r:["Mid","Support"],d:"AP",t:["Tank","Mage"],eng:1,cc:2,peel:1,tier:3},
+{n:"Gangplank",r:["Top"],d:"AD",t:["Fighter","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Garen",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:0,cc:1,peel:0,tier:3},
+{n:"Gnar",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Gragas",r:["Jungle","Top"],d:"AP",t:["Tank","Fighter"],eng:1,cc:2,peel:0,tier:3},
+{n:"Graves",r:["Jungle"],d:"AD",t:["Marksman","Fighter"],eng:0,cc:0,peel:0,tier:4},
+{n:"Gwen",r:["Top","Jungle"],d:"AP",t:["Fighter","Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Hecarim",r:["Jungle"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:3},
+{n:"Heimerdinger",r:["Mid","Top"],d:"AP",t:["Mage","Controller"],eng:0,cc:1,peel:1,tier:2},
+{n:"Hwei",r:["Mid","Support"],d:"AP",t:["Mage","Controller"],eng:0,cc:1,peel:1,tier:3},
+{n:"Illaoi",r:["Top"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Irelia",r:["Top","Mid"],d:"AD",t:["Fighter","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Ivern",r:["Jungle"],d:"AP",t:["Support","Controller"],eng:1,cc:1,peel:1,tier:2},
+{n:"Janna",r:["Support"],d:"AP",t:["Support","Controller"],eng:0,cc:1,peel:2,tier:4},
+{n:"Jarvan IV",r:["Jungle"],d:"AD",t:["Fighter","Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Jax",r:["Top","Jungle"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:4},
+{n:"Jayce",r:["Top","Mid"],d:"AD",t:["Fighter","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Jhin",r:["ADC"],d:"AD",t:["Marksman","Poke"],eng:0,cc:1,peel:0,tier:4},
+{n:"Jinx",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:1,peel:0,tier:4},
+{n:"K'Sante",r:["Top"],d:"AD",t:["Tank","Fighter"],eng:1,cc:2,peel:1,tier:3},
+{n:"Kai'Sa",r:["ADC"],d:"Mixed",t:["Marksman","Assassin"],eng:0,cc:0,peel:0,tier:4},
+{n:"Kalista",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:2},
+{n:"Karma",r:["Support","Mid"],d:"AP",t:["Mage","Support"],eng:0,cc:1,peel:1,tier:3},
+{n:"Karthus",r:["Jungle","Mid"],d:"AP",t:["Mage"],eng:0,cc:0,peel:0,tier:3},
+{n:"Kassadin",r:["Mid"],d:"AP",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Katarina",r:["Mid"],d:"AP",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Kayle",r:["Top"],d:"Mixed",t:["Fighter","Marksman"],eng:0,cc:0,peel:1,tier:3},
+{n:"Kayn",r:["Jungle"],d:"AD",t:["Fighter","Assassin"],eng:1,cc:1,peel:0,tier:3},
+{n:"Kennen",r:["Top"],d:"AP",t:["Mage","Fighter"],eng:1,cc:2,peel:0,tier:3},
+{n:"Kha'Zix",r:["Jungle"],d:"AD",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Kindred",r:["Jungle"],d:"AD",t:["Marksman"],eng:0,cc:1,peel:0,tier:2},
+{n:"Kled",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:2},
+{n:"Kog'Maw",r:["ADC"],d:"Mixed",t:["Marksman","Mage"],eng:0,cc:0,peel:0,tier:3},
+{n:"LeBlanc",r:["Mid"],d:"AP",t:["Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Lee Sin",r:["Jungle"],d:"AD",t:["Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Leona",r:["Support"],d:"AP",t:["Tank","Support"],eng:1,cc:2,peel:0,tier:4},
+{n:"Lillia",r:["Jungle"],d:"AP",t:["Mage","Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Lissandra",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:1,cc:2,peel:1,tier:3},
+{n:"Lucian",r:["ADC","Mid"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:3},
+{n:"Lulu",r:["Support"],d:"AP",t:["Support","Controller"],eng:0,cc:1,peel:2,tier:4},
+{n:"Lux",r:["Support","Mid"],d:"AP",t:["Mage","Poke"],eng:0,cc:1,peel:1,tier:4},
+{n:"Malphite",r:["Top"],d:"AP",t:["Tank"],eng:1,cc:2,peel:0,tier:4},
+{n:"Malzahar",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:2,peel:0,tier:5},
+{n:"Maokai",r:["Top","Support"],d:"AP",t:["Tank"],eng:1,cc:2,peel:1,tier:3},
+{n:"Master Yi",r:["Jungle"],d:"AD",t:["Fighter"],eng:0,cc:0,peel:0,tier:5},
+{n:"Mel",r:["Mid","Support"],d:"AP",t:["Mage","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Milio",r:["Support"],d:"AP",t:["Support","Controller"],eng:0,cc:0,peel:2,tier:4},
+{n:"Miss Fortune",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:1,peel:0,tier:3},
+{n:"Mordekaiser",r:["Top"],d:"AP",t:["Fighter"],eng:0,cc:1,peel:0,tier:5},
+{n:"Morgana",r:["Support"],d:"AP",t:["Mage","Controller"],eng:0,cc:2,peel:1,tier:4},
+{n:"Naafiri",r:["Mid","Jungle"],d:"AD",t:["Assassin"],eng:0,cc:0,peel:0,tier:2},
+{n:"Nami",r:["Support"],d:"AP",t:["Support","Controller"],eng:1,cc:2,peel:1,tier:4},
+{n:"Nasus",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:0,cc:1,peel:0,tier:5},
+{n:"Nautilus",r:["Support","Jungle"],d:"AP",t:["Tank","Support"],eng:1,cc:2,peel:0,tier:4},
+{n:"Neeko",r:["Mid","Support"],d:"AP",t:["Mage","Controller"],eng:1,cc:1,peel:0,tier:2},
+{n:"Nidalee",r:["Jungle"],d:"AP",t:["Mage","Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Nilah",r:["ADC"],d:"AD",t:["Fighter","Marksman"],eng:0,cc:1,peel:0,tier:4},
+{n:"Nocturne",r:["Jungle"],d:"AD",t:["Assassin","Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Nunu & Willump",r:["Jungle"],d:"AP",t:["Tank"],eng:1,cc:1,peel:0,tier:3},
+{n:"Olaf",r:["Jungle","Top"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Orianna",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:1,cc:2,peel:1,tier:4},
+{n:"Ornn",r:["Top"],d:"AP",t:["Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Pantheon",r:["Support","Top"],d:"AD",t:["Fighter","Assassin"],eng:1,cc:1,peel:0,tier:4},
+{n:"Poppy",r:["Top","Jungle"],d:"AD",t:["Tank","Fighter"],eng:1,cc:2,peel:1,tier:2},
+{n:"Pyke",r:["Support"],d:"AD",t:["Assassin","Support"],eng:1,cc:2,peel:0,tier:5},
+{n:"Qiyana",r:["Mid"],d:"AD",t:["Assassin"],eng:1,cc:1,peel:0,tier:2},
+{n:"Quinn",r:["Top"],d:"AD",t:["Marksman","Fighter"],eng:0,cc:0,peel:0,tier:2},
+{n:"Rakan",r:["Support"],d:"AP",t:["Support"],eng:1,cc:1,peel:1,tier:3},
+{n:"Rammus",r:["Jungle"],d:"AD",t:["Tank"],eng:1,cc:2,peel:0,tier:2},
+{n:"Rek'Sai",r:["Jungle"],d:"AD",t:["Fighter"],eng:1,cc:1,peel:0,tier:2},
+{n:"Rell",r:["Support"],d:"AP",t:["Tank","Support"],eng:1,cc:2,peel:0,tier:3},
+{n:"Renata Glasc",r:["Support"],d:"AP",t:["Support","Controller"],eng:1,cc:1,peel:1,tier:4},
+{n:"Renekton",r:["Top"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Rengar",r:["Jungle","Top"],d:"AD",t:["Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Riven",r:["Top"],d:"AD",t:["Fighter","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Rumble",r:["Top"],d:"AP",t:["Fighter","Mage"],eng:0,cc:1,peel:0,tier:2},
+{n:"Ryze",r:["Mid"],d:"AP",t:["Mage"],eng:0,cc:1,peel:0,tier:2},
+{n:"Samira",r:["ADC"],d:"AD",t:["Marksman","Assassin"],eng:0,cc:0,peel:0,tier:4},
+{n:"Sejuani",r:["Jungle"],d:"AP",t:["Tank"],eng:1,cc:2,peel:0,tier:3},
+{n:"Senna",r:["Support","ADC"],d:"AD",t:["Marksman","Support"],eng:0,cc:1,peel:1,tier:4},
+{n:"Seraphine",r:["Support","Mid"],d:"AP",t:["Mage","Support"],eng:0,cc:1,peel:1,tier:5},
+{n:"Sett",r:["Top","Support"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:3},
+{n:"Shaco",r:["Jungle"],d:"AD",t:["Assassin"],eng:0,cc:1,peel:0,tier:2},
+{n:"Shen",r:["Top"],d:"AD",t:["Tank"],eng:0,cc:1,peel:1,tier:3},
+{n:"Shyvana",r:["Jungle"],d:"AD",t:["Fighter","Tank"],eng:0,cc:0,peel:0,tier:2},
+{n:"Singed",r:["Top"],d:"AP",t:["Tank","Fighter"],eng:0,cc:0,peel:0,tier:4},
+{n:"Sion",r:["Top"],d:"AD",t:["Tank","Fighter"],eng:1,cc:2,peel:0,tier:3},
+{n:"Sivir",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:1,tier:3},
+{n:"Skarner",r:["Jungle"],d:"AD",t:["Tank","Fighter"],eng:1,cc:2,peel:0,tier:2},
+{n:"Smolder",r:["ADC"],d:"Mixed",t:["Marksman"],eng:0,cc:0,peel:0,tier:2},
+{n:"Sona",r:["Support"],d:"AP",t:["Support"],eng:0,cc:1,peel:1,tier:3},
+{n:"Soraka",r:["Support"],d:"AP",t:["Support","Controller"],eng:0,cc:0,peel:1,tier:3},
+{n:"Swain",r:["Support","Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:2,peel:0,tier:3},
+{n:"Sylas",r:["Mid","Jungle"],d:"AP",t:["Assassin","Fighter"],eng:1,cc:1,peel:0,tier:5},
+{n:"Syndra",r:["Mid"],d:"AP",t:["Mage"],eng:0,cc:2,peel:0,tier:3},
+{n:"Tahm Kench",r:["Support","Top"],d:"AP",t:["Tank","Support"],eng:1,cc:1,peel:1,tier:2},
+{n:"Taliyah",r:["Jungle","Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:1,peel:0,tier:3},
+{n:"Talon",r:["Mid","Jungle"],d:"AD",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Taric",r:["Support"],d:"AP",t:["Tank","Support"],eng:0,cc:1,peel:1,tier:3},
+{n:"Teemo",r:["Top"],d:"AP",t:["Marksman","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Thresh",r:["Support"],d:"AP",t:["Support","Controller"],eng:1,cc:2,peel:1,tier:4},
+{n:"Tristana",r:["ADC"],d:"AD",t:["Marksman","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Trundle",r:["Top","Jungle"],d:"AD",t:["Fighter","Tank"],eng:0,cc:1,peel:0,tier:2},
+{n:"Tryndamere",r:["Top"],d:"AD",t:["Fighter"],eng:0,cc:0,peel:0,tier:2},
+{n:"Twisted Fate",r:["Mid"],d:"AP",t:["Mage","Poke"],eng:1,cc:1,peel:0,tier:2},
+{n:"Twitch",r:["ADC"],d:"AD",t:["Marksman","Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Udyr",r:["Jungle"],d:"AD",t:["Fighter"],eng:0,cc:1,peel:0,tier:2},
+{n:"Urgot",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:0,cc:1,peel:0,tier:3},
+{n:"Varus",r:["ADC","Mid"],d:"AD",t:["Marksman","Mage"],eng:0,cc:1,peel:0,tier:3},
+{n:"Vayne",r:["ADC"],d:"AD",t:["Marksman","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Veigar",r:["Mid","Support"],d:"AP",t:["Mage"],eng:0,cc:1,peel:0,tier:3},
+{n:"Vel'Koz",r:["Support","Mid"],d:"AP",t:["Mage","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Vex",r:["Mid"],d:"AP",t:["Mage","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Vi",r:["Jungle"],d:"AD",t:["Fighter","Assassin"],eng:1,cc:2,peel:0,tier:3},
+{n:"Viego",r:["Jungle"],d:"AD",t:["Assassin","Fighter"],eng:0,cc:1,peel:0,tier:3},
+{n:"Viktor",r:["Mid"],d:"AP",t:["Mage","Controller"],eng:0,cc:1,peel:0,tier:3},
+{n:"Vladimir",r:["Mid","Top"],d:"AP",t:["Mage"],eng:0,cc:0,peel:0,tier:3},
+{n:"Volibear",r:["Top","Jungle"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:3},
+{n:"Warwick",r:["Jungle"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:2},
+{n:"Wukong",r:["Top","Jungle"],d:"AD",t:["Fighter","Tank"],eng:1,cc:1,peel:0,tier:3},
+{n:"Xayah",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:1,peel:0,tier:3},
+{n:"Xerath",r:["Support","Mid"],d:"AP",t:["Mage","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Xin Zhao",r:["Jungle"],d:"AD",t:["Fighter"],eng:1,cc:1,peel:0,tier:3},
+{n:"Yasuo",r:["Mid","Top"],d:"AD",t:["Fighter","Assassin"],eng:0,cc:1,peel:0,tier:5},
+{n:"Yone",r:["Mid","Top"],d:"AD",t:["Fighter","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Yorick",r:["Top"],d:"AD",t:["Fighter","Tank"],eng:0,cc:1,peel:0,tier:2},
+{n:"Yunara",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:3},
+{n:"Yuumi",r:["Support"],d:"AP",t:["Support"],eng:0,cc:0,peel:1,tier:3},
+{n:"Zac",r:["Jungle"],d:"AP",t:["Tank","Fighter"],eng:1,cc:2,peel:0,tier:3},
+{n:"Zed",r:["Mid"],d:"AD",t:["Assassin"],eng:0,cc:0,peel:0,tier:3},
+{n:"Zeri",r:["ADC"],d:"AD",t:["Marksman"],eng:0,cc:0,peel:0,tier:3},
+{n:"Ziggs",r:["Mid","ADC"],d:"AP",t:["Mage","Poke"],eng:0,cc:1,peel:0,tier:3},
+{n:"Zilean",r:["Support"],d:"AP",t:["Support","Controller"],eng:0,cc:1,peel:1,tier:2},
+{n:"Zoe",r:["Mid"],d:"AP",t:["Mage","Assassin"],eng:0,cc:1,peel:0,tier:3},
+{n:"Zyra",r:["Support"],d:"AP",t:["Mage","Controller"],eng:0,cc:2,peel:0,tier:3},
+];
+CHAMPS.forEach(c=>{c.id=c.n.toLowerCase().replace(/[^a-z0-9]/g,'');c.tags=c.t;});
+CHAMPS.sort((a,b)=>a.n.localeCompare(b.n));
+
+const ROLES=["Top","Jungle","Mid","ADC","Support"];
+const roleDotColor={Top:"#d0524a",Jungle:"#4caf82",Mid:"#c8a45c",ADC:"#d65ce0",Support:"#2f8fd6"};
+const pathColor={Precision:"#c8a45c",Domination:"#d0524a",Sorcery:"#7c8fe8",Resolve:"#4caf82",Inspiration:"#5cc8e8"};
+const secondaryOf={Precision:"Resolve",Domination:"Precision",Sorcery:"Domination",Resolve:"Precision",Inspiration:"Sorcery"};
+
+/* Real matchup/synergy data for yeetedzzz's actual champion pool (Seraphine main, Lux/Nautilus/Nami/Thresh secondary),
+   pulled from lolalytics + mobalytics, patch 26.13/26.14. Everything else in the app is still heuristic —
+   this is the one pocket of the data that's grounded in real aggregate win rates rather than class tags. */
+const REAL_MATCHUP_DATA={
+  seraphine:{counteredBy:["Pyke","Blitzcrank","Lux","Galio","Rell","Janna"],countersWell:["Lulu","Senna","Nami","Thresh","Swain","Mel"],bestADC:["Ashe","Sivir","Jhin","Draven","Miss Fortune"]},
+  lux:{counteredBy:["Lissandra","Nautilus","Maokai","Braum","Hwei"],countersWell:["Heimerdinger","Galio","Shen","Senna","Yuumi"]},
+  nautilus:{counteredBy:["Taric","Janna","Rell","Braum","Galio","Leona"],countersWell:["Neeko","Lux","Brand","Soraka","Sona"]},
+  nami:{counteredBy:["Maokai","Taric","Neeko","Braum","Vel'Koz","Rell","Alistar"],countersWell:["Nidalee","Ashe","Zac","Poppy","Sylas","Pyke"]},
+  thresh:{counteredBy:["Anivia","Shaco","Zyra","Elise","Rakan"],countersWell:["Maokai","Mel","Neeko","Yuumi","Hwei"]}
+};
+
+/* ---------------- STATE ---------------- */
+let state={
+  blueBans:Array(5).fill(null),
+  bluePicks:Array(5).fill(null),
+  redBans:Array(5).fill(null),
+  redPicks:Array(5).fill(null),
+  selected:null, // {team,type,index}
+  roleFilter:"All",
+  recRoleFilter:"All",
+  mySide:"blue",
+  search:""
+};
+
+function usedIds(){
+  const pickIds=arr=>arr.map(e=>e?e.id:null);
+  return new Set([...state.blueBans,...pickIds(state.bluePicks),...state.redBans,...pickIds(state.redPicks)].filter(Boolean));
+}
+
+/* ---------------- RENDER SLOTS ---------------- */
+function renderSlots(){
+  renderRow('blue-bans','blue','bans',5,true);
+  renderRow('blue-picks','blue','picks',5,false);
+  renderRow('red-bans','red','bans',5,true);
+  renderRow('red-picks','red','picks',5,false);
+}
+function renderRow(elId,team,type,count,isBan){
+  const el=document.getElementById(elId);
+  el.innerHTML='';
+  const arr=state[team+(isBan?'Bans':'Picks')];
+  for(let i=0;i<count;i++){
+    const entry=arr[i];
+    const champId = isBan ? entry : (entry?entry.id:null);
+    const pos = (!isBan && entry) ? entry.pos : null;
+    const div=document.createElement('div');
+    div.className='slot'+(isBan?' ban':' pick')+(champId?' filled':'');
+    if(state.selected && state.selected.team===team && state.selected.type===type && state.selected.index===i){
+      div.classList.add('selected');
+    }
+    if(champId){
+      const champ=CHAMPS.find(c=>c.id===champId);
+      if(isBan){
+        div.innerHTML=`<div class="cname">${champ?champ.n:''}</div><div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
+      }else{
+        const options=ROLES.map(r=>`<option value="${r}" ${r===pos?'selected':''}>${r}</option>`).join('');
+        div.innerHTML=`<div class="cname">${champ?champ.n:''}</div><select class="pos-select" onclick="event.stopPropagation()" onchange="setPos('${team}',${i},this.value)">${options}</select><div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
+      }
+    }
+    div.onclick=()=>selectSlot(team,type,i);
+    el.appendChild(div);
+  }
+}
+function setPos(team,index,pos){
+  state[team+'Picks'][index].pos=pos;
+  renderRecs();
+  renderRunes();
+}
+function selectSlot(team,type,index){
+  state.selected={team,type,index};
+  renderSlots();
+  renderRecs();
+}
+function clearSlot(team,type,index){
+  state[team+(type==='bans'?'Bans':'Picks')][index]=null;
+  renderSlots();renderGrid();renderRecs();renderRunes();
+}
+function setMySide(side){
+  state.mySide=side;
+  document.getElementById('toggle-blue').classList.toggle('active',side==='blue');
+  document.getElementById('toggle-red').classList.toggle('active',side==='red');
+  renderRecs();
+  renderRunes();
+}
+
+/* ---------------- ROLE FILTER PILLS (grid) ---------------- */
+function renderRoleFilterPills(){
+  const el=document.getElementById('role-filter');
+  el.innerHTML='';
+  ["All",...ROLES].forEach(r=>{
+    const p=document.createElement('div');
+    p.className='pill'+(state.roleFilter===r?' active':'');
+    p.textContent=r;
+    p.onclick=()=>{state.roleFilter=r;renderRoleFilterPills();renderGrid();};
+    el.appendChild(p);
+  });
+}
+function renderRecRoleFilterPills(){
+  const el=document.getElementById('rec-role-filter');
+  el.innerHTML='';
+  ["All",...ROLES].forEach(r=>{
+    const p=document.createElement('div');
+    p.className='pill'+(state.recRoleFilter===r?' active':'');
+    p.textContent=r;
+    p.style.fontSize='10.5px';p.style.padding='5px 10px';
+    p.onclick=()=>{state.recRoleFilter=r;renderRecRoleFilterPills();renderRecs();};
+    el.appendChild(p);
+  });
+}
+
+/* ---------------- CHAMP GRID ---------------- */
+function renderGrid(){
+  state.search=document.getElementById('search').value.toLowerCase();
+  const used=usedIds();
+  const grid=document.getElementById('champ-grid');
+  grid.innerHTML='';
+  CHAMPS.filter(c=>{
+    if(state.roleFilter!=='All' && !c.r.includes(state.roleFilter))return false;
+    if(state.search && !c.n.toLowerCase().includes(state.search))return false;
+    return true;
+  }).forEach(c=>{
+    const div=document.createElement('div');
+    div.className='champ'+(used.has(c.id)?' used':'');
+    const tierLetter=['D','C','B','A','S'][c.tier-1]||'B';
+    div.innerHTML=`<div class="role-dot" style="background:${roleDotColor[c.r[0]]}"></div><div>${c.n}</div><div class="tier">${tierLetter}</div>`;
+    div.onclick=()=>placeChamp(c.id);
+    grid.appendChild(div);
+  });
+}
+function placeChamp(champId,posOverride){
+  // remove from any existing slot first (bans are plain ids, picks are {id,pos} objects)
+  ['blueBans','redBans'].forEach(key=>{
+    const idx=state[key].indexOf(champId);
+    if(idx>-1)state[key][idx]=null;
+  });
+  ['bluePicks','redPicks'].forEach(key=>{
+    const idx=state[key].findIndex(e=>e&&e.id===champId);
+    if(idx>-1)state[key][idx]=null;
+  });
+  let target=state.selected;
+  if(!target){
+    // auto-find next open slot: prefer my side's picks, then bans
+    target=findNextOpen(state.mySide,'picks')||findNextOpen(state.mySide==='blue'?'red':'blue','picks')
+      ||findNextOpen(state.mySide,'bans')||findNextOpen(state.mySide==='blue'?'red':'blue','bans');
+  }
+  if(!target){renderGrid();return;}
+  if(target.type==='bans'){
+    state[target.team+'Bans'][target.index]=champId;
+  }else{
+    const champ=getChamp(champId);
+    state[target.team+'Picks'][target.index]={id:champId,pos:posOverride||champ.r[0]};
+  }
+  // auto-advance selection to next open slot of same team/type
+  const arr=state[target.team+(target.type==='bans'?'Bans':'Picks')];
+  const nextIdx=arr.findIndex(v=>v===null);
+  state.selected= nextIdx>-1 ? {team:target.team,type:target.type,index:nextIdx} : null;
+  renderSlots();renderGrid();renderRecs();renderRunes();
+}
+function findNextOpen(team,type){
+  const arr=state[team+(type==='bans'?'Bans':'Picks')];
+  const idx=arr.findIndex(v=>v===null);
+  return idx>-1?{team,type,index:idx}:null;
+}
+
+/* ---------------- RECOMMENDATION ENGINE ---------------- */
+function getChamp(id){return CHAMPS.find(c=>c.id===id);}
+function teamPicks(side){
+  return state[side+'Picks'].filter(Boolean).map(e=>({...getChamp(e.id),pos:e.pos}));
+}
+
+function scoreChampion(c,mySide){
+  const myTeam=teamPicks(mySide);
+  const enemyTeam=teamPicks(mySide==='blue'?'red':'blue');
+  let score=0;
+  const tags=[];
+
+  // 1. Role need (based on the position assigned to each pick, not just the champion's default role)
+  const filledRoles=new Set();
+  myTeam.forEach(m=>filledRoles.add(m.pos));
+  const opensRole=c.r.find(r=>!filledRoles.has(r));
+  const anyOpenRole=ROLES.find(r=>!filledRoles.has(r));
+  if(myTeam.length<5){
+    if(opensRole){score+=32;tags.push({t:`Fills ${opensRole}`,warn:false});}
+    else if(anyOpenRole){score+=8;tags.push({t:`Flex option for ${anyOpenRole}`,warn:false});}
+    else{score-=14;}
+  }
+
+  // 2. Damage type balance
+  const adCount=myTeam.filter(m=>m.d==='AD').length;
+  const apCount=myTeam.filter(m=>m.d==='AP').length;
+  if(myTeam.length>=1){
+    if(adCount>=2 && apCount===0 && c.d!=='AD'){score+=12;tags.push({t:"Balances damage (team is AD-heavy)",warn:false});}
+    else if(apCount>=2 && adCount===0 && c.d!=='AP'){score+=12;tags.push({t:"Balances damage (team is AP-heavy)",warn:false});}
+    else if((adCount>=2&&c.d==='AD')||(apCount>=2&&c.d==='AP')){score-=6;}
+  }
+
+  // 3. Engage / CC presence
+  const myEngage=myTeam.filter(m=>m.eng).length;
+  if(myTeam.length>=2 && myEngage===0 && c.eng){score+=16;tags.push({t:"Adds a reliable engage tool",warn:false});}
+  const myCC=myTeam.reduce((a,m)=>a+m.cc,0);
+  if(myTeam.length>=2 && myCC<=1 && c.cc>=1){score+=8;}
+
+  // 4. Frontline / tank presence
+  const myTanks=myTeam.filter(m=>m.t.includes('Tank')).length;
+  if(myTeam.length>=2 && myTanks===0 && c.t.includes('Tank')){score+=14;tags.push({t:"Gives team a frontline",warn:false});}
+
+  // 5. Counter-comp logic vs enemy
+  if(enemyTeam.length>0){
+    const enemyAssassins=enemyTeam.filter(e=>e.t.includes('Assassin')).length;
+    if(enemyAssassins>=1 && (c.t.includes('Tank')||c.peel)){score+=10;tags.push({t:"Answers enemy assassin threat",warn:false});}
+
+    const enemyEngage=enemyTeam.filter(e=>e.eng).length;
+    if(enemyEngage>=1 && (c.peel || c.cc>=1)){score+=9;tags.push({t:"Can peel vs enemy engage",warn:false});}
+    if(enemyEngage===0 && enemyTeam.length>=2 && c.t.includes('Poke')){score+=7;tags.push({t:"Poke punishes their lack of engage",warn:false});}
+
+    const enemyPoke=enemyTeam.filter(e=>e.t.includes('Poke')).length;
+    if(enemyPoke>=2 && c.eng){score+=9;tags.push({t:"Engage closes the gap on poke comp",warn:false});}
+
+    const enemyRanged=enemyTeam.filter(e=>e.t.includes('Marksman')||e.t.includes('Mage')).length;
+    if(enemyRanged>=2 && c.t.includes('Assassin')){score+=8;tags.push({t:"Dives their squishy backline",warn:false});}
+    if(enemyRanged>=2 && c.t.includes('Assassin')===false && c.t.includes('Tank')===false && myTanks===0 && c.d!=='AD'&&c.d!=='AP'){}
+
+    // enemy tanky comp -> reward true damage / % health / poke
+    const enemyTankCount=enemyTeam.filter(e=>e.t.includes('Tank')).length;
+    if(enemyTankCount>=2 && (c.t.includes('Poke')||c.n==="Vayne"||c.n==="Fiora")){score+=6;tags.push({t:"Deals with a tanky enemy comp",warn:false});}
+  }
+
+  // 5b. Real synergy data (currently covers Seraphine's known best ADC partners — see REAL_MATCHUP_DATA)
+  myTeam.forEach(m=>{
+    const real=REAL_MATCHUP_DATA[m.id];
+    if(real&&real.bestADC&&real.bestADC.includes(c.n)){
+      score+=15;tags.push({t:`[Data] Strong duo with ${m.n}`,warn:false});
+    }
+  });
+
+  // 6. Static tier baseline (approximate)
+  score+=(c.tier-3)*4;
+  const tierLetter=['D','C','B','A','S'][c.tier-1]||'B';
+  tags.push({t:`Meta tier: ${tierLetter}`,warn:c.tier<=2});
+
+  // 7. Warn if this pick stacks a redundant role/type once team is fuller
+  if(myTeam.length>=3 && !opensRole){tags.push({t:`${c.r[0]} already filled`,warn:true});}
+
+  return {champ:c,score,tags};
+}
+
+function renderRecs(){
+  const target=state.selected;
+  const side = target ? target.team : state.mySide;
+  const openPickCount = state[side+'Picks'].filter(v=>v===null).length;
+
+  document.getElementById('recs-sub').textContent =
+    target && target.type==='bans'
+      ? `Suggested bans aren't scored the same way — pick a Pick slot to get recommendations. Showing best available picks for ${cap(side)} Side instead.`
+      : `Recommendations for ${cap(side)} Side's next open pick slot.`;
+
+  const used=usedIds();
+  let candidates=CHAMPS.filter(c=>!used.has(c.id));
+  if(state.recRoleFilter!=='All'){
+    candidates=candidates.filter(c=>c.r.includes(state.recRoleFilter));
+  }
+
+  if(openPickCount===0 && target && target.type==='picks'){
+    document.getElementById('rec-list').innerHTML=`<div class="empty-state">${cap(side)} side's picks are full.</div>`;
+    return;
+  }
+
+  const scored=candidates.map(c=>scoreChampion(c,side)).sort((a,b)=>b.score-a.score).slice(0,8);
+  const list=document.getElementById('rec-list');
+  if(scored.length===0){
+    list.innerHTML=`<div class="empty-state">No champions match this role filter.</div>`;
+    return;
+  }
+  list.innerHTML='';
+  scored.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='rec-item';
+    div.innerHTML=`
+      <div class="rec-top"><div class="rec-name">${s.champ.n}</div><div class="rec-score">${s.score>0?'+':''}${s.score}</div></div>
+      <div class="rec-tags">${s.tags.map(t=>`<span class="rec-tag${t.warn?' warn':''}">${t.t}</span>`).join('')}</div>
+    `;
+    div.style.cursor='pointer';
+    div.title='Click to place this champion in the selected slot';
+    div.onclick=()=>{
+      if(!state.selected){
+        const open=findNextOpen(side,'picks');
+        if(open)state.selected=open;
+      }
+      placeChamp(s.champ.id, state.recRoleFilter!=='All'?state.recRoleFilter:undefined);
+    };
+    list.appendChild(div);
+  });
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+
+/* ---------------- RUNE SUGGESTIONS ---------------- */
+function getKeystone(c){
+  const t=c.t;
+  if(t.includes('Assassin'))return {path:'Domination',rune:'Electrocute'};
+  if(t.includes('Poke'))return {path:'Sorcery',rune:'Arcane Comet'};
+  if(t.includes('Marksman'))return {path:'Precision',rune:'Press the Attack'};
+  if(t.includes('Mage'))return {path:'Sorcery',rune:'Summon Aery'};
+  if(t.includes('Support')&&c.eng)return {path:'Resolve',rune:'Guardian'};
+  if(t.includes('Support'))return {path:'Sorcery',rune:'Summon Aery'};
+  if(t.includes('Tank')&&c.eng)return {path:'Resolve',rune:'Aftershock'};
+  if(t.includes('Tank'))return {path:'Resolve',rune:'Grasp of the Undying'};
+  if(t.includes('Fighter'))return {path:'Precision',rune:'Conqueror'};
+  return {path:'Precision',rune:'Conqueror'};
+}
+function matchupNote(c,enemyLaner){
+  if(!enemyLaner)return "No enemy champion is assigned to this lane yet — showing the default page for this champion.";
+  const real=REAL_MATCHUP_DATA[c.id];
+  if(real){
+    if(real.counteredBy.includes(enemyLaner.n)){
+      return `[Data] vs ${enemyLaner.n}: this is one of ${c.n}'s tougher lane matchups per real win-rate data — lean Resolve secondary (Second Wind + Bone Plating) and play safe for a level 6 spike.`;
+    }
+    if(real.countersWell.includes(enemyLaner.n)){
+      return `[Data] vs ${enemyLaner.n}: ${c.n} tends to win this matchup in real games — you can lane a bit more aggressively.`;
+    }
+  }
+  const notes=[];
+  if(enemyLaner.t.includes('Assassin')||enemyLaner.eng){
+    notes.push(`vs ${enemyLaner.n}: lean Resolve secondary (Second Wind + Bone Plating) to survive the burst/engage`);
+  }
+  if(enemyLaner.t.includes('Poke')){
+    notes.push(`vs ${enemyLaner.n}: take Second Wind and Magical Footwear/Biscuits to offset the poke damage`);
+  }
+  if(enemyLaner.t.includes('Tank')&&!c.t.includes('Poke')&&!c.t.includes('Support')){
+    notes.push(`vs ${enemyLaner.n}: consider Domination secondary (Taste of Blood/Ravenous Hunter) for sustained damage through their tank stats`);
+  }
+  if(notes.length===0){
+    notes.push(`vs ${enemyLaner.n}: a fairly even matchup — the default page above holds up fine`);
+  }
+  return notes.join(' · ');
+}
+function renderRunes(){
+  const side=state.mySide;
+  const enemySide=side==='blue'?'red':'blue';
+  document.getElementById('runes-side-label').textContent=`— ${cap(side)} Side`;
+  const myEntries=state[side+'Picks'].filter(Boolean);
+  const enemyEntries=state[enemySide+'Picks'].filter(Boolean);
+  const list=document.getElementById('runes-list');
+  if(myEntries.length===0){
+    list.innerHTML=`<div class="runes-empty">Lock in a pick on your side to see suggested runes here.</div>`;
+    return;
+  }
+  list.innerHTML='';
+  myEntries.forEach(entry=>{
+    const champ=getChamp(entry.id);
+    const enemyEntry=enemyEntries.find(e=>e.pos===entry.pos);
+    const enemyChamp=enemyEntry?getChamp(enemyEntry.id):null;
+    const ks=getKeystone(champ);
+    const sec=secondaryOf[ks.path];
+    const note=matchupNote(champ,enemyChamp);
+    const div=document.createElement('div');
+    div.className='rune-card';
+    div.innerHTML=`
+      <div class="rune-card-head"><div class="rune-champ">${champ.n}</div><div class="rune-pos">${entry.pos}</div></div>
+      <div class="rune-paths">
+        <span class="rune-chip" style="background:${pathColor[ks.path]}22;color:${pathColor[ks.path]};border-color:${pathColor[ks.path]}55;">${ks.rune} · ${ks.path}</span>
+        <span class="rune-chip" style="background:${pathColor[sec]}22;color:${pathColor[sec]};border-color:${pathColor[sec]}55;">${sec} secondary</span>
+      </div>
+      <div class="rune-note">${note}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+/* ---------------- INIT ---------------- */
+renderRoleFilterPills();
+renderRecRoleFilterPills();
+renderSlots();
+renderGrid();
+renderRecs();
+renderRunes();
+</script>
+</body>
+</html>

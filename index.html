@@ -44,6 +44,21 @@ header{display:flex;align-items:baseline;justify-content:space-between;margin-bo
 .title span{color:var(--ink-faint);font-weight:500;}
 .subtitle{font-size:12.5px;color:var(--ink-dim);max-width:520px;line-height:1.5;}
 
+/* status bar */
+.status-bar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  background:linear-gradient(90deg,#c8a45c18,transparent);border:1px solid var(--line);border-left:3px solid var(--gold);
+  border-radius:8px;padding:10px 16px;margin-bottom:16px;
+}
+#draft-status{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.03em;color:var(--gold-bright);}
+.status-actions{display:flex;gap:8px;}
+.status-btn{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);border-radius:18px;
+  padding:6px 14px;font-size:12px;cursor:pointer;font-family:inherit;transition:.12s;
+}
+.status-btn:hover{border-color:var(--gold);color:var(--ink);}
+.status-btn.warn:hover{border-color:var(--red);color:#e08379;}
+
 /* board */
 .board{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
 .side{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 16px 14px;position:relative;overflow:hidden;}
@@ -62,8 +77,10 @@ header{display:flex;align-items:baseline;justify-content:space-between;margin-bo
   display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-faint);
   cursor:pointer;position:relative;background:#0d131c;transition:.12s;text-align:center;overflow:hidden;
 }
-.slot.ban{width:38px;height:38px;border-radius:6px;opacity:.85;}
-.slot.pick{width:68px;height:66px;flex-direction:column;gap:3px;padding:5px 3px 4px;}
+.slot.ban{width:44px;height:44px;border-radius:6px;opacity:.85;padding:0;overflow:hidden;}
+.slot.ban img{width:100%;height:100%;object-fit:cover;border-radius:5px;}
+.slot.pick{width:72px;height:92px;flex-direction:column;gap:3px;padding:5px 3px 4px;}
+.slot.pick img{width:36px;height:36px;border-radius:6px;object-fit:cover;}
 .slot:hover{border-color:var(--gold);}
 .slot.selected{border-style:solid;border-color:var(--gold-bright);box-shadow:0 0 0 2px #c8a45c33;}
 .slot.filled{border-style:solid;border-color:var(--line);}
@@ -97,14 +114,16 @@ header{display:flex;align-items:baseline;justify-content:space-between;margin-bo
 .champ-grid::-webkit-scrollbar{width:7px;}
 .champ-grid::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
 .champ{
-  aspect-ratio:1;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;
-  font-size:9.5px;text-align:center;padding:4px 2px;color:var(--ink-dim);transition:.1s;position:relative;
+  aspect-ratio:.8;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;cursor:pointer;
+  font-size:9.5px;text-align:center;padding:4px 2px;color:var(--ink-dim);transition:.1s;position:relative;gap:3px;
 }
+.champ img{width:34px;height:34px;border-radius:6px;object-fit:cover;display:block;}
+.champ .cgname{line-height:1.15;word-break:break-word;}
 .champ:hover{border-color:var(--gold);transform:translateY(-1px);color:var(--ink);}
 .champ.used{opacity:.22;pointer-events:none;filter:grayscale(1);}
-.champ .role-dot{position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--ink-faint);}
-.champ .tier{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--gold);margin-top:2px;}
+.champ .role-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--ink-faint);border:1px solid #0009;}
+.champ .tier{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--gold);}
 
 /* recs */
 .recs{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;position:sticky;top:20px;}
@@ -154,6 +173,14 @@ header{display:flex;align-items:baseline;justify-content:space-between;margin-bo
     </div>
   </header>
 
+  <div class="status-bar">
+    <div id="draft-status">Next up: Blue Ban #1</div>
+    <div class="status-actions">
+      <button class="status-btn" onclick="undoLast()">↩ Undo last</button>
+      <button class="status-btn warn" onclick="if(confirm('Clear the entire draft?'))resetDraft()">Reset draft</button>
+    </div>
+  </div>
+
   <div class="board">
     <div class="side blue">
       <div class="side-head">
@@ -180,7 +207,7 @@ header{display:flex;align-items:baseline;justify-content:space-between;margin-bo
   <div class="controls">
     <div class="pill-group" id="role-filter"></div>
     <input class="search" id="search" placeholder="Search champion..." oninput="renderGrid()">
-    <div class="hint" id="mode-hint">Click a slot, then a champion to place it. Each pick has a position dropdown — set it to the lane they're actually playing.</div>
+    <div class="hint" id="mode-hint">Just click champions in the order they happen — the app follows standard ranked draft order (5 bans each, then snake picks) automatically. Click a slot directly to override.</div>
   </div>
 
   <div class="main">
@@ -386,6 +413,23 @@ const CHAMPS = [
 CHAMPS.forEach(c=>{c.id=c.n.toLowerCase().replace(/[^a-z0-9]/g,'');c.tags=c.t;});
 CHAMPS.sort((a,b)=>a.n.localeCompare(b.n));
 
+/* Champion square icons via Riot's public Data Dragon CDN — no API key needed.
+   Riot's internal keys don't always match display names, so irregular ones are overridden. */
+const DDRAGON_VERSION="16.14.1";
+const DDRAGON_KEY_OVERRIDES={
+  "Aurelion Sol":"AurelionSol","Bel'Veth":"Belveth","Cho'Gath":"Chogath","Dr. Mundo":"DrMundo",
+  "Jarvan IV":"JarvanIV","K'Sante":"KSante","Kai'Sa":"Kaisa","Kha'Zix":"Khazix","Kog'Maw":"KogMaw",
+  "LeBlanc":"Leblanc","Lee Sin":"LeeSin","Master Yi":"MasterYi","Miss Fortune":"MissFortune",
+  "Nunu & Willump":"Nunu","Rek'Sai":"RekSai","Renata Glasc":"Renata","Tahm Kench":"TahmKench",
+  "Twisted Fate":"TwistedFate","Vel'Koz":"Velkoz","Wukong":"MonkeyKing","Xin Zhao":"XinZhao"
+};
+function ddKey(name){
+  return DDRAGON_KEY_OVERRIDES[name]||name.replace(/[^a-zA-Z0-9]/g,'');
+}
+function champImgUrl(champ){
+  return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${ddKey(champ.n)}.png`;
+}
+
 const ROLES=["Top","Jungle","Mid","ADC","Support"];
 const roleDotColor={Top:"#d0524a",Jungle:"#4caf82",Mid:"#c8a45c",ADC:"#d65ce0",Support:"#2f8fd6"};
 const pathColor={Precision:"#c8a45c",Domination:"#d0524a",Sorcery:"#7c8fe8",Resolve:"#4caf82",Inspiration:"#5cc8e8"};
@@ -412,8 +456,32 @@ let state={
   roleFilter:"All",
   recRoleFilter:"All",
   mySide:"blue",
-  search:""
+  search:"",
+  history:[] // stack of {team,type,index} for undo, in the order they were filled
 };
+
+/* Standard ranked solo/duo draft order: 5 bans each alternating, then a snake pick order (B R R B B R R B B R). */
+const DRAFT_ORDER=(()=>{
+  const order=[];
+  for(let i=0;i<5;i++){order.push({team:'blue',type:'bans',index:i});order.push({team:'red',type:'bans',index:i});}
+  const pickTeams=['blue','red','red','blue','blue','red','red','blue','blue','red'];
+  const pickIdx=[0,0,1,1,2,2,3,3,4,4];
+  pickTeams.forEach((team,i)=>order.push({team,type:'picks',index:pickIdx[i]}));
+  return order;
+})();
+function findNextDraftSlot(){
+  for(const step of DRAFT_ORDER){
+    const arr=state[step.team+(step.type==='bans'?'Bans':'Picks')];
+    if(arr[step.index]===null)return step;
+  }
+  return null;
+}
+function draftStepLabel(step){
+  if(!step)return "Draft complete";
+  const teamLabel=step.team==='blue'?'Blue':'Red';
+  const typeLabel=step.type==='bans'?'Ban':'Pick';
+  return `${teamLabel} ${typeLabel} #${step.index+1}`;
+}
 
 function usedIds(){
   const pickIds=arr=>arr.map(e=>e?e.id:null);
@@ -442,11 +510,13 @@ function renderRow(elId,team,type,count,isBan){
     }
     if(champId){
       const champ=CHAMPS.find(c=>c.id===champId);
+      const imgTag=champ?`<img src="${champImgUrl(champ)}" alt="" onerror="this.style.display='none'">`:'';
       if(isBan){
-        div.innerHTML=`<div class="cname">${champ?champ.n:''}</div><div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
+        div.innerHTML=`${imgTag}<div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
+        if(champ)div.title=champ.n;
       }else{
         const options=ROLES.map(r=>`<option value="${r}" ${r===pos?'selected':''}>${r}</option>`).join('');
-        div.innerHTML=`<div class="cname">${champ?champ.n:''}</div><select class="pos-select" onclick="event.stopPropagation()" onchange="setPos('${team}',${i},this.value)">${options}</select><div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
+        div.innerHTML=`${imgTag}<div class="cname">${champ?champ.n:''}</div><select class="pos-select" onclick="event.stopPropagation()" onchange="setPos('${team}',${i},this.value)">${options}</select><div class="clear" onclick="event.stopPropagation();clearSlot('${team}','${type}',${i})">✕</div>`;
       }
     }
     div.onclick=()=>selectSlot(team,type,i);
@@ -465,7 +535,8 @@ function selectSlot(team,type,index){
 }
 function clearSlot(team,type,index){
   state[team+(type==='bans'?'Bans':'Picks')][index]=null;
-  renderSlots();renderGrid();renderRecs();renderRunes();
+  state.history=state.history.filter(h=>!(h.team===team&&h.type===type&&h.index===index));
+  renderSlots();renderGrid();renderRecs();renderRunes();renderDraftStatus();
 }
 function setMySide(side){
   state.mySide=side;
@@ -514,7 +585,7 @@ function renderGrid(){
     const div=document.createElement('div');
     div.className='champ'+(used.has(c.id)?' used':'');
     const tierLetter=['D','C','B','A','S'][c.tier-1]||'B';
-    div.innerHTML=`<div class="role-dot" style="background:${roleDotColor[c.r[0]]}"></div><div>${c.n}</div><div class="tier">${tierLetter}</div>`;
+    div.innerHTML=`<img src="${champImgUrl(c)}" alt="" loading="lazy" onerror="this.style.display='none'"><div class="role-dot" style="background:${roleDotColor[c.r[0]]}"></div><div class="cgname">${c.n}</div><div class="tier">${tierLetter}</div>`;
     div.onclick=()=>placeChamp(c.id);
     grid.appendChild(div);
   });
@@ -529,12 +600,8 @@ function placeChamp(champId,posOverride){
     const idx=state[key].findIndex(e=>e&&e.id===champId);
     if(idx>-1)state[key][idx]=null;
   });
-  let target=state.selected;
-  if(!target){
-    // auto-find next open slot: prefer my side's picks, then bans
-    target=findNextOpen(state.mySide,'picks')||findNextOpen(state.mySide==='blue'?'red':'blue','picks')
-      ||findNextOpen(state.mySide,'bans')||findNextOpen(state.mySide==='blue'?'red':'blue','bans');
-  }
+  // target: whatever slot is explicitly selected, otherwise the next slot in the real draft order
+  let target=state.selected||findNextDraftSlot();
   if(!target){renderGrid();return;}
   if(target.type==='bans'){
     state[target.team+'Bans'][target.index]=champId;
@@ -542,11 +609,36 @@ function placeChamp(champId,posOverride){
     const champ=getChamp(champId);
     state[target.team+'Picks'][target.index]={id:champId,pos:posOverride||champ.r[0]};
   }
-  // auto-advance selection to next open slot of same team/type
-  const arr=state[target.team+(target.type==='bans'?'Bans':'Picks')];
-  const nextIdx=arr.findIndex(v=>v===null);
-  state.selected= nextIdx>-1 ? {team:target.team,type:target.type,index:nextIdx} : null;
-  renderSlots();renderGrid();renderRecs();renderRunes();
+  state.history.push(target);
+  // auto-advance to the next slot in the real draft order (fast path — no re-clicking a slot needed)
+  state.selected=findNextDraftSlot();
+  renderSlots();renderGrid();renderRecs();renderRunes();renderDraftStatus();
+}
+function undoLast(){
+  const last=state.history.pop();
+  if(!last)return;
+  if(last.type==='bans'){
+    state[last.team+'Bans'][last.index]=null;
+  }else{
+    state[last.team+'Picks'][last.index]=null;
+  }
+  state.selected=last;
+  renderSlots();renderGrid();renderRecs();renderRunes();renderDraftStatus();
+}
+function resetDraft(){
+  state.blueBans=Array(5).fill(null);
+  state.bluePicks=Array(5).fill(null);
+  state.redBans=Array(5).fill(null);
+  state.redPicks=Array(5).fill(null);
+  state.history=[];
+  state.selected=findNextDraftSlot();
+  renderSlots();renderGrid();renderRecs();renderRunes();renderDraftStatus();
+}
+function renderDraftStatus(){
+  const el=document.getElementById('draft-status');
+  if(!el)return;
+  const next=findNextDraftSlot();
+  el.textContent=next?`Next up: ${draftStepLabel(next)}`:"Draft complete";
 }
 function findNextOpen(team,type){
   const arr=state[team+(type==='bans'?'Bans':'Picks')];
@@ -759,12 +851,14 @@ function renderRunes(){
 }
 
 /* ---------------- INIT ---------------- */
+state.selected=findNextDraftSlot();
 renderRoleFilterPills();
 renderRecRoleFilterPills();
 renderSlots();
 renderGrid();
 renderRecs();
 renderRunes();
+renderDraftStatus();
 </script>
 </body>
 </html>
